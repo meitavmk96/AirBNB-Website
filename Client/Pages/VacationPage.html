@@ -1,0 +1,190 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <script src="https://code.jquery.com/jquery-3.6.1.js" integrity="sha256-3zlB5s2uwoUzrXK3BT7AX3FyvojsraNFxCc2vC/7pNI=" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="../JS/ajaxCalls.js"></script>
+    <link href="../CSS/VacationCSS.css" rel="stylesheet" />
+    <link href="../CSS/FlatCSS.css" rel="stylesheet" />
+    <link href="../CSS/LoginPopupCSS.css" rel="stylesheet" />
+    <script>
+
+        $(document).ready(function () {
+            if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+                api = "https://localhost:7015/api/Orders";
+            }
+            else {
+                api = "https://proj.ruppin.ac.il/cgroup36/test2/tar1/api/Orders";
+            }
+
+            FlatIdFromStorage = sessionStorage.getItem("FlatId");
+            UserFromStorage = JSON.parse(sessionStorage.getItem("user"));
+
+            GetFlatIdFromStorage();
+            GetUserIdFromStorage();
+
+            $("#VacationsForm").submit(postVaction);
+            $("#GetVacationsBTN").click(GetOrders);
+
+            userRender(UserFromStorage);
+            BlockDates();
+        })
+
+        function GetOrders() {
+            ajaxCall("GET", api, "", getOrderSCB, getOrderECB);
+        }
+
+        function getOrderSCB(data) {
+            console.log(data);
+            OrdersRender(data);
+        }
+
+        function getOrderECB(err) {
+            console.log(err);
+        }
+
+        function postVaction() {
+            const userId = UserFromStorage.email;
+            const flatId = FlatIdFromStorage;
+            const startDate = $("#startDateTB").val();
+            const endDate = $("#endDateTB").val();
+
+            const Vacation = {
+                UserId: userId,
+                FlatId: flatId,
+                StartDate: startDate,
+                EndDate: endDate
+            }
+
+            ajaxCall("POST", api, JSON.stringify(Vacation), postOrderSCB, postOrderECB);
+            return false;
+        }
+
+        function postOrderSCB(data) {
+            if (data == false) {
+                alert("this id already exists or dates are not aviliable");
+            }
+            else {
+                alert("vacation succesfuly added");
+            }
+        }
+
+        function postOrderECB(err) {
+            console.log(err);
+            alert("Error");
+        }
+
+        function OrdersRender(OrdersArray) {
+            let str = "<h1>All the vacations:</h1><div class='row'>";
+            for (var i = 0; i < OrdersArray.length; i++) {
+                str += `<div class='col-lg-4 col-md-4 col-sm-6 col-12'>`;
+                str += `<div class='card row'>`;
+                str += `<div class='col-12'><p>id: ${OrdersArray[i].id}</p></div>`;
+                str += `<div class='col-12'><p>user id: ${OrdersArray[i].userId}</p></div>`;
+                str += `<div class='col-12'><p>flat id: ${OrdersArray[i].flatId}</p></div>`;
+                str += `<div class='col-12'><p>start date: ${OrdersArray[i].startDate}</p></div>`;
+                str += `<div class='col-12'><p>end date: ${OrdersArray[i].endDate}</p></div>`;
+                str += `</div></div>`;
+            }
+            str += `</div>`;
+            document.getElementById("viewVacation").innerHTML = str;
+        }
+
+        function GetFlatIdFromStorage() {
+            let str = `<input type="text" placeholder="${FlatIdFromStorage}" readonly/>`;
+            document.getElementById("flatId_ph").innerHTML = str;
+        }
+
+        function GetUserIdFromStorage() {
+            let User = JSON.parse(sessionStorage.user);
+            let str = `<input type="text" placeholder="${User.email}" readonly/>`;
+            document.getElementById("userId_ph").innerHTML = str;
+        }
+
+        function BlockDates() {
+            //block all past dates
+            $(function () {
+                var date = new Date();
+                var getmonth = date.getMonth() + 1;
+                var getday = date.getDate();
+                var getyear = date.getFullYear();
+                if (getmonth < 10)
+                    getmonth = '0' + getmonth.toString();
+                if (getday < 10)
+                    getday = '0' + getday.toString();
+                var inDate = getyear + '-' + getmonth + '-' + getday;
+
+                $('#startDateTB').attr('min', inDate);
+                $('#endDateTB').attr('min', inDate);
+
+            });
+
+            //block all dates previous to start date
+            $('#startDateTB').change(function () {
+                $('#endDateTB').attr('min', $('#startDateTB').val());
+            });
+
+            //block all dates previous to start date
+            $('#endDateTB').change(function () {
+                $('#startDateTB').attr('max', $('#endDateTB').val());
+            });
+        }
+
+        function userRender(user) {
+            let str = `<div id="userDetailsPh2" class="userDetails"><p>Hello, ${user.firstName}</p></div>`;
+            str += `<button onclick = "Logout()" style="width:auto;">Logout</button>`;
+            str += `<button onclick = "Update()" style="width:auto;">Update Details</button>`;
+
+            document.getElementById("userDetailsPh2").innerHTML = str;
+        }
+
+        function Logout() {
+            sessionStorage.clear();
+            window.location.href = "FlatsPage.html";
+        }
+
+        function Update() {
+            window.location.href = "UpdateUserPage.html";
+        }
+
+    </script>
+</head>
+<body>
+    <div id="userDetailsPh2" class="userDetails">
+    </div>
+    <hr />
+    <div id="insertVacation">
+        <form id="VacationsForm">
+            <h1>Post Vacation to server:</h1>
+            <table>
+                <tr>
+                    <td>user id:</td>
+                    <td id="userId_ph"><input type="text" id="userIdTB" required /></td>
+                </tr>
+                <tr>
+                    <td>flat id:</td>
+                    <td id="flatId_ph"></td>
+                </tr>
+                <tr>
+                    <td>start date:</td>
+                    <td><input type="date" class="form-control" id="startDateTB" required /></td>
+                </tr>
+                <tr>
+                    <td>end date:</td>
+                    <td><input type="date" class="form-control" id="endDateTB" required /></td>
+                </tr>
+            </table>
+            <div class="btnContainer"><input type="submit" id="postVactionBTN" value="Post vacation" /></div>
+        </form>
+    </div>
+    <br />
+    <hr />
+    <div class="btnContainer"><button id="GetVacationsBTN">Get all vacations</button></div>
+    <br />
+    <div id="viewVacation">
+
+    </div>
+</body>
+</html>

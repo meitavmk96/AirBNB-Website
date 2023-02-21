@@ -1,0 +1,268 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <script src="https://code.jquery.com/jquery-3.6.1.js" integrity="sha256-3zlB5s2uwoUzrXK3BT7AX3FyvojsraNFxCc2vC/7pNI=" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="../JS/ajaxCalls.js"></script>
+    <link href="../CSS/FlatCSS.css" rel="stylesheet" />
+    <link href="../CSS/VacationCSS.css" rel="stylesheet" />
+    <link href="../CSS/LoginPopupCSS.css" rel="stylesheet" />
+    <script>
+        $(document).ready(function () {
+            //if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+            //    api = "https://localhost:7015/api/Flat";
+            //}
+            //else {
+            //    api = "https://proj.ruppin.ac.il/cgroup36/test2/tar1/api/Flat";
+            //}
+
+            api = "https://localhost:7015/api/Flat";
+            apiLogin = "https://localhost:7015/Login"
+
+            GetFlats();
+            $("#FlatsForm").submit(postFlat);
+            $("#SignInForm").submit(login);
+
+            User = JSON.parse(sessionStorage.getItem("user"));
+            if (User != null) {
+                userRender(User);
+            }
+        })
+
+        function GetFlats() {
+            ajaxCall("GET", api, "", getFlatSCB, getFlatECB);
+        }
+
+        function getFlatSCB(data) {
+            console.log(data);
+            FlatsRender(data)
+        }
+
+        function getFlatECB(err) {
+            console.log(err);
+        }
+
+        function postFlat() {
+
+            const city = $("#citySelect").val();
+            const address = $("#addressTB").val();
+            const numberOfRooms = $("#numberOfRoomsTB").val();
+            const price = $("#priceTB").val();
+
+
+            const Flat = {
+                City: city,
+                Address: address,
+                Price: price,
+                NumberOfRooms: numberOfRooms
+            }
+
+            ajaxCall("POST", api, JSON.stringify(Flat), postFlatSCB, postFlatECB);
+            return false;
+        }
+
+        function postFlatSCB(data) {
+            if (data == false) {
+                alert("this flat already exists");
+            }
+            else {
+                alert("flat succesfuly added");
+                GetFlats();
+            }
+        }
+
+        function postFlatECB(err) {
+            alert("Error");
+        }
+
+        function FlatsRender(FlatsArray) {
+
+            var str = "<h1>All the flats:</h1><div class='row'>";
+            for (var i = 0; i < FlatsArray.length; i++) {
+                str += `<div class='col-lg-4 col-md-4 col-sm-6 col-12'>`;
+                str += `<div class='card row'>`;
+                str += `<div class='col-12'><p>Id: ${FlatsArray[i].id}</p></div>`;
+                str += `<div class='col-12'><p>City: ${FlatsArray[i].city}</p></div>`;
+                str += `<div class='col-12'><p>Address: ${FlatsArray[i].address}</p></div>`;
+                str += `<div class='col-12'><p>Price: ${FlatsArray[i].price}</p></div>`;
+                str += `<div class='col-12'><p>Number of rooms: ${FlatsArray[i].numberOfRooms}</p></div>`;
+                str += `<div class='col-12'><button class="OrderFlatBTN" onclick = "addFlatToStorage(${FlatsArray[i].id})" >Order Flat</button></div>`;
+                str += `</div></div>`;
+            }
+            document.getElementById("viewFlats").innerHTML = str;
+        }
+
+        function addUserToStorage(user) {
+            sessionStorage.setItem("user", JSON.stringify(user));
+            // Get the sign-in modal
+            var modal = document.getElementById('id01');
+            //close modal
+            modal.style.display = "none";
+        }
+
+        function login() {
+            const email = $("#emailTB").val();
+            const password = $("#pswTB").val();
+
+            ajaxCall("GET", apiLogin + "?email=" + email + "&password=" + password, "", getLoginSCB, getLoginECB);
+            return false;
+        }
+
+        function getLoginSCB(data) {
+            //check if user exist
+            if (data.email == null) {
+                alert("user does not exist");
+            }
+            //user exist
+            else {
+                //check if user active
+                if (data.isActive == false) {
+                    //user is not active
+                    alert("user is not active");
+                }
+                //the user is active
+                else {
+                    addUserToStorage(data);
+                    //check if admin
+                    if (data.isAdmin) {
+                        //user is admin
+                        window.location.href = "AdminPage.html";
+                    }
+                    //user is not admin
+                    else {
+                        userRender(data);
+                        if (sessionStorage.getItem("FlatId") == null) {
+                            document.getElementById('id01').style.display = "none";
+                        }
+                        else {
+                            window.location.href = "VacationPage.html";
+                        }
+                    }
+                }
+            }
+
+        }
+
+        function getLoginECB(err) {
+            alert("Error");
+            console.log(err);
+        }
+
+        function addFlatToStorage(id) {
+            sessionStorage.setItem("FlatId", id);
+            if (sessionStorage.getItem("user") == null) {
+                alert("Please login before ordering a vacation");
+                document.getElementById('id01').style.display = 'block';
+            }
+            else {
+                window.location.href = "VacationPage.html";
+            }
+        }
+
+        function userRender(user) {
+            let str = `<div><p>Hello, ${user.firstName}</p></div>`;
+            str += `<button onclick = "Logout()" style="width:auto;">Logout</button>`;
+            str += `<button onclick = "Update()" style="width:auto;">Update Details</button>`;
+
+            document.getElementById("userDetailsPh").innerHTML = str;
+        }
+
+        function Logout() {
+            sessionStorage.clear();
+            let str = `<div><p>Hello, Guest</p></div>`;
+            str += `<button onclick="document.getElementById('id01').style.display='block'" style="width:auto;">Login</button>`;
+            document.getElementById("userDetailsPh").innerHTML = str;
+        }
+
+        function Update() {
+            window.location.href = "UpdateUserPage.html";
+        }
+
+    </script>
+    <!--modal script-->
+    <script>
+        // Get the sign in modal
+        var modal = document.getElementById('id01');
+
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
+
+</head>
+<body>
+    <div id="container">
+        <div>
+            <div id="userDetailsPh" class="userDetails">
+                <p>Hello, Guest</p>
+                <button onclick="document.getElementById('id01').style.display='block'" style="width:auto;">Login</button>
+            </div>
+            <!--modal------------------------------------------------------------------------------------------------------------------------->
+            <div id="id01" class="modal">
+                <form id="SignInForm" class="modal-content animate" action="/action_page.php" method="post">
+                    <div class="titleContainer">
+                        <span onclick="document.getElementById('id01').style.display='none'" class="close" title="Close Modal">&times;</span>
+                        <h1>Login</h1>
+                    </div>
+
+                    <div class="container">
+                        <label for="uEmail"><b>Email</b></label>
+                        <input id="emailTB" type="text" placeholder="Enter Email" name="uEmail" pattern="^[a-zA-Z0-9_.]+[+]?[a-zA-Z0-9]+[@]{1}[a-z0-9]+[\.][a-z]+$" required>
+
+                        <label for="psw"><b>Password</b></label>
+                        <input id="pswTB" type="password" placeholder="Enter Password" name="psw" required>
+
+                        <button type="submit">Login</button>
+                    </div>
+
+                    <div class="container" style="background-color:#f1f1f1">
+                        <button type="button" onclick="document.getElementById('id01').style.display='none'" class="cancelbtn">Cancel</button>
+                        <span class="signup"> <a href="RegisterPage.html">Sign Up</a></span>
+                    </div>
+                </form>
+            </div>
+            <!--modal---------------------------------------------------------------------------------------------------------------------->
+        </div>
+        <hr />
+        <div id="insertFlats">
+            <form id="FlatsForm">
+                <h1>Post flat to server:</h1>
+                <table>
+                    <tr>
+                        <td>City:</td>
+                        <td>
+                            <input list="cityTBF" id="citySelect" name="cities" required>
+                            <datalist id="cityTBF">
+                                <option value="">
+                                <option value="TLV">
+                                <option value="LONDON">
+                                <option value="NETANYA">
+                            </datalist>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>address: </td>
+                        <td><input type="text" id="addressTB" required maxlength="30" /></td>
+                    </tr>
+                    <tr>
+                        <td>price: </td>
+                        <td><input type="number" id="priceTB" required min="1" /></td>
+                    </tr>
+                    <tr>
+                        <td>number Of Rooms: </td>
+                        <td><input type="number" id="numberOfRoomsTB" required min="1" max="10" /></td>
+                    </tr>
+                </table>
+                <div class="btnContainer"><input type="submit" name="postFlatBTN" value="Post Flat" /></div>
+            </form>
+        </div>
+        <br /><hr />
+        <div id="viewFlats"></div>
+    </div>
+</body>
+</html>
